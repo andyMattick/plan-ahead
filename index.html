@@ -223,15 +223,6 @@
 </style>
 </head>
 <body>
-<div id="authGate" style="position:fixed;inset:0;background:var(--ink);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;">
-  <div style="max-width:380px;width:100%;text-align:center;">
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin:0 0 10px;">Prep Journal</div>
-    <h1 style="font-family:'Fraunces',serif;font-weight:600;font-size:26px;margin:0 0 18px;color:var(--paper);">Sign in to your journal</h1>
-    <p id="authStatus" style="color:var(--slate);font-size:13.5px;margin:0 0 16px;">Enter your email — we'll send a sign-in link. No password needed.</p>
-    <input id="authEmail" type="email" placeholder="you@school.edu" style="width:100%;box-sizing:border-box;background:rgba(247,245,240,0.05);border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:var(--paper);font-family:inherit;font-size:14px;margin-bottom:12px;">
-    <button id="authSendBtn" style="width:100%;background:var(--gold);color:var(--ink);border:none;border-radius:20px;padding:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:14px;">Send sign-in link</button>
-  </div>
-</div>
 <div id="roomGate" style="display:none;position:fixed;inset:0;background:var(--ink);z-index:998;align-items:center;justify-content:center;padding:20px;">
   <div style="max-width:380px;width:100%;text-align:center;">
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin:0 0 10px;">Shared Journal</div>
@@ -290,32 +281,10 @@ const STORAGE_KEY = 'night-before-journal-v6'; // kept only as a label; persiste
 const SUPABASE_URL = 'https://ztdfgqesgtwphmvakprr.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0ZGZncWVzZ3R3cGhtdmFrcHJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NzM4NzMsImV4cCI6MjEwNTQ0OTg3M30.AoZ1aeGwBkXONXa4YG8i6UHSVUfgg-K74TD0k_BPG_w';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-let currentUser = null;
-
-async function initAuth(){
-  const { data:{ session } } = await sb.auth.getSession();
-  if(session){ await enterApp(session.user); return; }
-  sb.auth.onAuthStateChange((event, session)=>{
-    if(session && !currentUser) enterApp(session.user);
-  });
-  document.getElementById('authSendBtn').addEventListener('click', sendMagicLink);
-  document.getElementById('authEmail').addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendMagicLink(); });
-}
-async function sendMagicLink(){
-  const email = document.getElementById('authEmail').value.trim();
-  const statusEl = document.getElementById('authStatus');
-  if(!email){ statusEl.textContent = 'Enter your email first.'; return; }
-  document.getElementById('authSendBtn').disabled = true;
-  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: window.location.href } });
-  document.getElementById('authSendBtn').disabled = false;
-  statusEl.textContent = error ? ('Error: ' + error.message) : 'Check your email for the sign-in link.';
-}
 const ROOM_STORAGE_KEY = 'prep-journal-room-code';
 let currentRoomCode = null;
 
-async function enterApp(user){
-  currentUser = user;
-  document.getElementById('authGate').style.display = 'none';
+async function startApp(){
   const savedRoom = localStorage.getItem(ROOM_STORAGE_KEY);
   if(savedRoom){ currentRoomCode = savedRoom; await openRoom(); }
   else{ showRoomGate(); }
@@ -1316,7 +1285,7 @@ document.getElementById('schoolLinkEdit').addEventListener('click', async ()=>{
 });
 
 function render(){ renderSchoolLink(); renderCalendar(); renderSemesterPanel(); renderPrepPanel(); }
-initAuth();
+startApp();
 </script>
 </body>
 </html>
