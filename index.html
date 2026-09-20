@@ -83,6 +83,25 @@
   .school-link-wrap{display:flex;align-items:center;gap:6px;}
   .school-link-edit{background:transparent;border:1px solid var(--line);color:var(--slate);border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:11px;}
   .school-link-edit:hover{border-color:var(--violet);color:var(--violet);}
+  .reminder-btn{background:transparent;border:1px solid rgba(232,163,61,0.45);color:var(--gold);border-radius:20px;padding:7px 12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;white-space:nowrap;}
+  .reminder-btn:hover{background:rgba(232,163,61,0.10);border-color:var(--gold);}
+  .reminder-modal-title{font-family:'Fraunces',serif;font-size:23px;margin-bottom:4px;}
+  .reminder-modal-sub{color:var(--slate);font-size:12px;line-height:1.5;margin-bottom:16px;}
+  .reminder-form{display:grid;grid-template-columns:minmax(0,1fr) 130px auto;gap:7px;align-items:end;margin-bottom:14px;}
+  .reminder-field{display:flex;flex-direction:column;gap:5px;color:var(--slate);font-family:'IBM Plex Mono',monospace;font-size:10px;}
+  .reminder-field input,.reminder-field select{width:100%;background:rgba(247,245,240,0.05);border:1px solid var(--line);border-radius:7px;padding:8px;color:var(--paper);font:13px 'Inter',sans-serif;min-width:0;}
+  .reminder-field select option{background:var(--ink-2);color:var(--paper);}
+  .reminder-action{background:var(--gold);color:var(--ink);border:none;border-radius:18px;padding:8px 12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .reminder-action:hover{background:var(--gold-dim);}
+  .reminder-list{border-top:1px solid var(--line);padding-top:10px;}
+  .reminder-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .reminder-row:last-child{border-bottom:0;}
+  .reminder-time{font-family:'IBM Plex Mono',monospace;color:var(--gold);font-size:11px;white-space:nowrap;}
+  .reminder-label{overflow-wrap:anywhere;}
+  .reminder-delete{background:transparent;border:0;color:var(--slate);cursor:pointer;font-size:15px;padding:2px 4px;}
+  .reminder-delete:hover{color:var(--rust);}
+  .reminder-status{color:var(--slate);font-size:12px;line-height:1.5;margin:8px 0;}
+  @media (max-width:600px){.reminder-form{grid-template-columns:1fr 1fr;}.reminder-form .reminder-field:first-child{grid-column:1 / -1;}.reminder-action{grid-column:1 / -1;}}
 
   .sem-title{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);margin-bottom:10px;}
   .sem-row{background:rgba(79,168,160,0.06);border:1px solid rgba(79,168,160,0.22);border-radius:10px;padding:9px 11px;margin-bottom:7px;}
@@ -223,6 +242,15 @@
 </style>
 </head>
 <body>
+<div id="authGate" style="position:fixed;inset:0;background:var(--ink);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="max-width:380px;width:100%;text-align:center;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin:0 0 10px;">Prep Journal</div>
+    <h1 style="font-family:'Fraunces',serif;font-weight:600;font-size:26px;margin:0 0 18px;color:var(--paper);">Sign in to your journal</h1>
+    <p id="authStatus" style="color:var(--slate);font-size:13.5px;margin:0 0 16px;">Enter your email — we'll send a sign-in link. No password needed.</p>
+    <input id="authEmail" type="email" placeholder="you@school.edu" style="width:100%;box-sizing:border-box;background:rgba(247,245,240,0.05);border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:var(--paper);font-family:inherit;font-size:14px;margin-bottom:12px;">
+    <button id="authSendBtn" style="width:100%;background:var(--gold);color:var(--ink);border:none;border-radius:20px;padding:10px;font-weight:600;cursor:pointer;font-family:inherit;font-size:14px;">Send sign-in link</button>
+  </div>
+</div>
 <div id="roomGate" style="display:none;position:fixed;inset:0;background:var(--ink);z-index:998;align-items:center;justify-content:center;padding:20px;">
   <div style="max-width:380px;width:100%;text-align:center;">
     <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin:0 0 10px;">Shared Journal</div>
@@ -243,6 +271,7 @@
     <div class="school-link-wrap">
       <a class="school-link" id="schoolLinkAnchor" href="https://eaglesnest.pcci.edu/calendar/" target="_blank" rel="noopener">Eagle's Nest Calendar ↗</a>
       <button class="school-link-edit" id="schoolLinkEdit" title="Edit this link">✎</button>
+      <button class="reminder-btn" id="remindersBtn" hidden>🔔 Reminders</button>
       <button id="roomSwitchBtn" title="Switch shared journal" style="background:transparent;border:1px solid var(--line);color:var(--slate);border-radius:20px;padding:4px 10px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;"></button>
     </div>
   </header>
@@ -281,13 +310,147 @@ const STORAGE_KEY = 'night-before-journal-v6'; // kept only as a label; persiste
 const SUPABASE_URL = 'https://ztdfgqesgtwphmvakprr.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0ZGZncWVzZ3R3cGhtdmFrcHJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NzM4NzMsImV4cCI6MjEwNTQ0OTg3M30.AoZ1aeGwBkXONXa4YG8i6UHSVUfgg-K74TD0k_BPG_w';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const VAPID_PUBLIC_KEY = 'BFmoc-Vht3OsjJnNW5hYftk9EC8MCPd5jcSHKYy60Qbv9YpHihzIwnlaSp5ZvYFuXJl_zH2CYmBUQ2x0bEFCVOM';
 const ROOM_STORAGE_KEY = 'prep-journal-room-code';
 let currentRoomCode = null;
+let currentUser = null;
+const readOnlyMode = ['shared','readonly','read-only'].includes(new URLSearchParams(location.search).get('view'));
 
-async function startApp(){
+async function initAuth(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(session){ await enterApp(session.user); return; }
+  sb.auth.onAuthStateChange((event, nextSession)=>{
+    if(nextSession && !currentUser) enterApp(nextSession.user);
+  });
+  document.getElementById('authSendBtn').addEventListener('click', sendMagicLink);
+  document.getElementById('authEmail').addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendMagicLink(); });
+}
+async function sendMagicLink(){
+  const email = document.getElementById('authEmail').value.trim();
+  const statusEl = document.getElementById('authStatus');
+  if(!email){ statusEl.textContent = 'Enter your email first.'; return; }
+  document.getElementById('authSendBtn').disabled = true;
+  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: window.location.href } });
+  document.getElementById('authSendBtn').disabled = false;
+  statusEl.textContent = error ? ('Error: ' + error.message) : 'Check your email for the sign-in link.';
+}
+async function enterApp(user){
+  currentUser = user;
+  document.getElementById('authGate').style.display = 'none';
+  updateReminderButton();
+  await startRoom();
+}
+async function startRoom(){
   const savedRoom = localStorage.getItem(ROOM_STORAGE_KEY);
   if(savedRoom){ currentRoomCode = savedRoom; await openRoom(); }
   else{ showRoomGate(); }
+}
+
+async function registerReminderServiceWorker(){
+  if(!('serviceWorker' in navigator)) return null;
+  try{ return await navigator.serviceWorker.register('/sw.js'); }
+  catch(e){ console.warn('Could not register reminder service worker:', e); return null; }
+}
+async function refreshReminderAuth(){
+  try{
+    const { data } = await sb.auth.getUser();
+    currentUser = data && data.user ? data.user : null;
+  }catch(e){ currentUser = null; }
+  updateReminderButton();
+}
+function updateReminderButton(){
+  const btn = document.getElementById('remindersBtn');
+  if(!btn) return;
+  btn.hidden = readOnlyMode || !currentUser;
+}
+function bytesToBase64Url(bytes){
+  let binary = '';
+  bytes.forEach(byte=>{ binary += String.fromCharCode(byte); });
+  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function reminderClassOptions(){
+  const classes = new Map();
+  state.semesters.forEach(sem=> Object.values(sem.classDefs || {}).forEach(cd=>{
+    if(cd.code || cd.name) classes.set(`${cd.code || ''} — ${cd.name || ''}`.trim(), cd);
+  }));
+  return [...classes.keys()].sort((a,b)=>a.localeCompare(b));
+}
+async function getReminderRows(){
+  const { data, error } = await sb.from('reminder_times').select('id,time_of_day,label,timezone').eq('user_id', currentUser.id).order('time_of_day');
+  if(error) throw error;
+  return data || [];
+}
+async function enableReminderNotifications(statusEl){
+  if(!currentUser){ statusEl.textContent = 'Sign in to enable reminders.'; return; }
+  if(!('Notification' in window) || !('PushManager' in window)){ statusEl.textContent = 'This browser does not support push notifications.'; return; }
+  try{
+    const permission = await Notification.requestPermission();
+    if(permission !== 'granted'){ statusEl.textContent = 'Browser notifications are still disabled.'; return; }
+    const registration = await registerReminderServiceWorker();
+    if(!registration) throw new Error('Service worker registration failed.');
+    let subscription = await registration.pushManager.getSubscription();
+    if(!subscription) subscription = await registration.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:Uint8Array.from(atob(VAPID_PUBLIC_KEY.replace(/-/g,'+').replace(/_/g,'/')), c=>c.charCodeAt(0))});
+    const keys = subscription.getKey ? { p256dh: subscription.getKey('p256dh'), auth: subscription.getKey('auth') } : {};
+    const { error } = await sb.from('push_subscriptions').upsert({ user_id:currentUser.id, endpoint:subscription.endpoint, p256dh:bytesToBase64Url(new Uint8Array(keys.p256dh)), auth_key:bytesToBase64Url(new Uint8Array(keys.auth)) }, { onConflict:'endpoint' });
+    if(error) throw error;
+    statusEl.textContent = 'Browser notifications are enabled.';
+  }catch(e){ statusEl.textContent = `Could not enable notifications: ${e.message || e}`; }
+}
+async function openReminders(){
+  if(!currentUser || readOnlyMode) return;
+  openModal((box, done)=>{
+    const closeButton=document.createElement('button'); closeButton.textContent='Close'; closeButton.style.cssText='background:transparent;border:1px solid var(--line);color:var(--slate);border-radius:20px;padding:8px 16px;cursor:pointer;font-family:inherit;margin-top:16px;float:right;'; closeButton.addEventListener('click',()=>done());
+    const renderReminderModal = async ()=>{
+      box.innerHTML = '<div class="reminder-modal-title">🔔 Reminders</div><div class="reminder-modal-sub">Get a push notification at your chosen time. Your device timezone is used.</div>';
+      const status = document.createElement('div'); status.className='reminder-status'; status.textContent='Loading reminders…'; box.appendChild(status);
+      let rows;
+      try{ rows = await getReminderRows(); }catch(e){ status.textContent = `Could not load reminders: ${e.message || e}`; return; }
+      status.textContent = '';
+      const form = document.createElement('form'); form.className='reminder-form';
+      const labelField = document.createElement('label'); labelField.className='reminder-field'; labelField.textContent='Reminder';
+      const select = document.createElement('select');
+      const customOption = document.createElement('option'); customOption.value='__custom__'; customOption.textContent='Custom reminder'; select.appendChild(customOption);
+      reminderClassOptions().forEach(label=>{ const option=document.createElement('option'); option.value=label; option.textContent=label; select.appendChild(option); });
+      labelField.appendChild(select);
+      const customInput = document.createElement('input'); customInput.type='text'; customInput.placeholder='What should you remember?'; customInput.required=true;
+      const customField = document.createElement('label'); customField.className='reminder-field'; customField.textContent='Custom label'; customField.appendChild(customInput);
+      const timeField = document.createElement('label'); timeField.className='reminder-field'; timeField.textContent='Time';
+      const timeInput = document.createElement('input'); timeInput.type='time'; timeInput.required=true; timeField.appendChild(timeInput);
+      const addButton = document.createElement('button'); addButton.className='reminder-action'; addButton.type='submit'; addButton.textContent='Add';
+      form.append(labelField, customField, timeField, addButton); box.appendChild(form);
+      const enableButton = document.createElement('button'); enableButton.className='reminder-action'; enableButton.type='button'; enableButton.textContent='Enable browser notifications';
+      enableButton.addEventListener('click', ()=>enableReminderNotifications(status)); box.appendChild(enableButton);
+      const list = document.createElement('div'); list.className='reminder-list'; box.appendChild(list);
+      if(!rows.length) list.innerHTML='<div class="reminder-status">No reminders yet.</div>';
+      rows.forEach(row=>{
+        const item=document.createElement('div'); item.className='reminder-row';
+        const text=document.createElement('div'); text.className='reminder-label'; text.textContent=row.label;
+        const time=document.createElement('div'); time.className='reminder-time'; time.textContent=row.time_of_day;
+        const del=document.createElement('button'); del.className='reminder-delete'; del.type='button'; del.title='Delete reminder'; del.textContent='✕';
+        del.addEventListener('click', async ()=>{ const { error }=await sb.from('reminder_times').delete().eq('id',row.id).eq('user_id',currentUser.id); if(error) status.textContent=`Could not delete reminder: ${error.message}`; else await renderReminderModal(); });
+        item.append(text,time,del); list.appendChild(item);
+      });
+      select.addEventListener('change', ()=>{ customField.hidden=select.value!=='__custom__'; customInput.required=select.value==='__custom__'; });
+      select.dispatchEvent(new Event('change'));
+      form.addEventListener('submit', async (event)=>{
+        event.preventDefault();
+        const label=select.value==='__custom__' ? customInput.value.trim() : select.value;
+        if(!label || !timeInput.value) return;
+        addButton.disabled=true;
+        const { error }=await sb.from('reminder_times').insert({user_id:currentUser.id,time_of_day:timeInput.value,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,label});
+        if(error){ status.textContent=`Could not add reminder: ${error.message}`; addButton.disabled=false; return; }
+        await renderReminderModal();
+      });
+      box.appendChild(closeButton);
+    };
+    renderReminderModal();
+  });
+}
+document.getElementById('remindersBtn').addEventListener('click', openReminders);
+
+async function startApp(){
+  registerReminderServiceWorker();
+  await initAuth();
 }
 function showRoomGate(){
   const gate = document.getElementById('roomGate');
